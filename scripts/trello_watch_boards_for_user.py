@@ -79,7 +79,7 @@ class trello_watch_boards_for_user(NebriOS):
             create_backup_board = True
         else:
             try:
-                backup_board = client.get_board(backup_board_id)
+                backup_board = client.get_board(member_data.backup_board_id)
                 if backup_board.closed:
                     create_backup_board = True
             except Exception, e:

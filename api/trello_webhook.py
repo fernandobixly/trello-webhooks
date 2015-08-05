@@ -17,10 +17,9 @@ DONE_LIST_NAME = "Done"
 
 def oauth_token(request):
     if request.FORM:
-        user = request.user
         auth_token = get_auth_token()
         auth_token.token = request.FORM.trello_token
-        auth_token.trello_watch_boards_for_user = True
+        auth_token.continue_trello_setup = True
         auth_token.save()
 
 
@@ -38,7 +37,9 @@ def board_callback(request):
                 except:
                     return
             else:
-                card_json = client.fetch_json('/cards/' + card_id, query_params={'actions': 'all', 'checklists': 'all', 'attachments': 'true', 'filter': 'all'})
+                card_json = client.fetch_json('/cards/' + card_id, query_params={'actions': 'all', 'checklists': 'all',
+                                                                                 'attachments': 'true',
+                                                                                 'filter': 'all'})
             _update_card(action, action_type, action['data'], card_json)
     except Exception, err:
         logging.debug('Exception caught: %s', traceback.format_exc())
