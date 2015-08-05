@@ -1,7 +1,11 @@
+from trello_webhook_models import get_auth_token
+
+
 class trello_webhook_setup(NebriOS):
     listens_to = ['trello_webhook_setup']
-    required = ['trello_api_key', 'trello_api_secret', 'instance_name', 'past_due_notify_address', 'completed_notify_address']
-    
+    required = ['trello_api_key', 'trello_api_secret', 'instance_name', 'past_due_notify_address',
+                'completed_notify_address']
+
     # Note: This script is used to set up the trello webhook system.
     # If shared.TRELLO_API_KEY and shared.TRELLO_API_SECRET are not created,
     # you should supply them like so:
@@ -19,9 +23,11 @@ class trello_webhook_setup(NebriOS):
         self.trello_webhook_setup = "Ran"
         # check for existance of callback urls
         if shared.TRELLO_WEBHOOK_MEMBER_CALLBACK_URL is None:
-            shared.TRELLO_WEBHOOK_MEMBER_CALLBACK_URL = 'https://%s.nebrios.com/api/v1/trello_webhook/member_callback' % self.instance_name
+            shared.TRELLO_WEBHOOK_MEMBER_CALLBACK_URL = 'https://%s.nebrios.com/api/v1/trello_webhook/member_callback' \
+                                                        % self.instance_name
         if shared.TRELLO_WEBHOOK_BOARD_CALLBACK_URL is None:
-            shared.TRELLO_WEBHOOK_BOARD_CALLBACK_URL = 'https://%s.nebrios.com/api/v1/trello_webhook/board_callback' % self.instance_name
+            shared.TRELLO_WEBHOOK_BOARD_CALLBACK_URL = 'https://%s.nebrios.com/api/v1/trello_webhook/board_callback' % \
+                                                       self.instance_name
         # check for existance of trello api key/secret
         if shared.TRELLO_API_KEY is None:
             if self.trello_api_key is not None:
@@ -38,9 +44,7 @@ class trello_webhook_setup(NebriOS):
         shared.PAST_DUE_NOTIFY_ADDRESS = self.past_due_notify_address
         shared.COMPLETED_NOTIFY_ADDRESS = self.completed_notify_address
         # next let's see if the current user has a token already
-        try:
-            p = Process.objects.get(user=self.last_actor, kind="trello_oauth_token")
-            token = p.token
-        except:
+        auth_token = get_auth_token()
+        if auth_token.token is None:
             # no token yet, let's load the card.
             load_card('trello-token-save')
