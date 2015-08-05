@@ -3,23 +3,25 @@ import traceback
 
 from trello import TrelloClient, Board
 
+from trello_utils import get_client, get_user
+
 logging.basicConfig(filename='trello_webhook_module.log', level=logging.DEBUG)
 
 
 class trello_watch_boards_for_user(NebriOS):
-    
+
     listens_to = ['trello_watch_boards_for_user']
-    
+
     def check(self):
         if self.trello_watch_boards_for_user is True:
             return self.verify_user()
         return False
-        
+
     def action(self):
         logging.debug('Starting trello_watch_boards_for_user action...')
         try:
-            client = self.get_client()
-            user = self.get_me()
+            client = get_client()
+            user = get_user(client)
             member_data = self.setup_backup_board_and_list(client, user)
             self.setup_board_tree(client)
             logging.debug('callback id: %s, url: %s', user['id'], self.get_hook_url(shared.TRELLO_WEBHOOK_MEMBER_CALLBACK_URL))
@@ -28,7 +30,7 @@ class trello_watch_boards_for_user(NebriOS):
             logging.debug('Exception caught: %s', traceback.format_exc())
             raise err
         logging.debug('Done with trello_watch_boards_for_user action...')
-    
+
     def setup_board_tree(self, client):
         board_tree = self.get_board_tree()
         boards = client.list_boards()
@@ -47,14 +49,14 @@ class trello_watch_boards_for_user(NebriOS):
                     local_list.save()
             if created:
                 client.create_hook(self.get_hook_url(shared.TRELLO_WEBHOOK_BOARD_CALLBACK_URL), local_board.board_id)
-        
+
     def get_board_tree(self):
         board_tree, _ = Process.objects.get_or_create(kind="trello_board_tree")
         return board_tree
-    
+
     def get_hook_url(self, base_url):
         return '%s?trello_api_key=%s&trello_token=%s' % (base_url, shared.TRELLO_API_KEY, self.trello_token)
-        
+
     def setup_backup_board_and_list(self, client, user):
         member_data = self.get_member_data(user['id'])
         board_created = self.create_backup_board(client, member_data)
@@ -64,13 +66,13 @@ class trello_watch_boards_for_user(NebriOS):
         member_data.archived_list_id = self.create_backup_list(client, member_data, board_created, member_data.archived_list_name, member_data.archived_list_id)
         member_data.save()
         return member_data
-    
+
     def create_backup_list(self, client, member_data, board_created, name, list_id):
         create_backup_list = False
         backup_board = client.get_board(member_data.backup_board_id)
         backup_list = backup_board.add_list(name)
-        return backup_list.id   
-    
+        return backup_list.id
+
     def create_backup_board(self, client, member_data):
         create_backup_board = False
         if member_data.backup_board_id is None:
@@ -89,11 +91,11 @@ class trello_watch_boards_for_user(NebriOS):
             member_data.backup_board_name = backup_board.name
             member_data.save()
         return create_backup_board
-    
+
     def get_member_data(self, member_id):
         member_data, _ = Process.objects.get_or_create(kind="trello_member_data", member_id=member_id)
         return member_data
-    
+
     def get_trello_token(self):
         if self.trello_token is None:
             try:
@@ -102,15 +104,7 @@ class trello_watch_boards_for_user(NebriOS):
                 load_card('trello-token-save')
                 raise Exception('Token does not exist. Please supply one on the Trello OAuth Token Creation card or run trello_webhook_setup.')
         return self.trello_token
-    
-    def get_client(self):
-        self.get_trello_token()
-        return TrelloClient(api_key=shared.TRELLO_API_KEY, api_secret=shared.TRELLO_API_SECRET, token=self.trello_token)
-    
-    def get_me(self):
-        client = self.get_client()
-        return client.fetch_json('/members/me')
-    
+
     def verify_user(self):
         # Try authenticating with the credentials provided
         # We should not get an authorization error

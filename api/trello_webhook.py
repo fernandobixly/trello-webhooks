@@ -4,6 +4,7 @@ import traceback
 
 from trello import TrelloClient
 
+from trello_webhook_models import get_auth_token
 
 logging.basicConfig(filename='trello_webhook_module.log', level=logging.DEBUG)
 
@@ -17,17 +18,11 @@ DONE_LIST_NAME = "Done"
 def oauth_token(request):
     if request.FORM:
         user = request.user
-        try:
-            p = Process.objects.get(user=request.user, kind="trello_oauth_token")
-            p.token = request.FORM.trello_token
-            p.save()
-        except:
-            p = Process.objects.create()
-            p.user=request.user
-            p.kind="trello_oauth_token"
-            p.token=request.FORM.trello_token
-            p.trello_watch_boards_for_user = True
-            p.save()
+        auth_token = get_auth_token()
+        auth_token.token = request.FORM.trello_token
+        auth_token.trello_watch_boards_for_user = True
+        auth_token.save()
+
 
 def board_callback(request):
     try:
@@ -80,7 +75,7 @@ def _update_card(action, action_type, action_data, card_json):
     if list_data is None and 'listAfter' in action_data:
         list_data = action_data['listAfter']
         moved = True
-        if list_data['name'] == DONE_LIST_NAME and 'listBefore' in action_data:            
+        if list_data['name'] == DONE_LIST_NAME and 'listBefore' in action_data:
             closed = True
     if list_data is None:
         list_data = last_action['list']
@@ -139,7 +134,7 @@ def _update_card(action, action_type, action_data, card_json):
     else:
         local_card.card_is_due = False
     if list_data['name'] == DONE_LIST_NAME:
-        local_card.card_due = None        
+        local_card.card_due = None
     local_card.card_json = card_json
     local_card.save()
 

@@ -13,3 +13,7 @@ def get_client():
     if auth_token.token is None:
         raise InvalidAuthToken()
     return TrelloClient(api_key=shared.TRELLO_API_KEY, api_secret=shared.TRELLO_API_SECRET, token=auth_token.token)
+
+
+def get_user(client):
+    return client.fetch_json('/members/me')

@@ -1,14 +1,14 @@
 from nebriosmodels import NebriOSModel, NebriOSField
 
 
-class OAuthToken(NebriOSModel):
+class TrelloOAuthToken(NebriOSModel):
 
     token = NebriOSField(required=True, default=None)
 
 
 class TrelloMemberData(NebriOSModel):
 
-    member_id = NebriOSField(required=True)
+    user_id = NebriOSField(required=True)
     backup_board_name = NebriOSField()
     backup_board_id = NebriOSField()
     deleted_list_name = NebriOSField()
@@ -19,6 +19,15 @@ class TrelloMemberData(NebriOSModel):
 
 def get_auth_token():
     try:
-        return OAuthToken.get()
+        return TrelloOAuthToken.get()
     except Process.DoesNotExist:
-        return OAuthToken()
+        return TrelloOAuthToken()
+
+
+def get_member_data(user_id):
+    try:
+        return TrelloMemberData.get(user_id=user_id)
+    except Process.DoesNotExist:
+        member_data = TrelloMemberData(user_id=user_id)
+        member_data.save()
+        return member_data
