@@ -1,9 +1,9 @@
 from trello_utils import get_client, get_user
-from trello_webhook_models import TrelloBoardRequest, get_auth_token, get_user_data
+from trello_webhook_models import TrelloBoardRequest, get_auth_token, get_user_data, get_board_request
 
 
 class trello_webhook_setup(NebriOS):
-    listens_to = ['trello_webhook_setup', 'child.backup_board_id', 'child.deleted_list_id', 'child.archived_list_id']
+    listens_to = ['trello_webhook_setup', 'child.oauth_token_setup', 'child.board_request_handled']
     required = ['trello_api_key', 'trello_api_secret', 'instance_name', 'past_due_notify_address',
                 'completed_notify_address']
 
@@ -19,7 +19,7 @@ class trello_webhook_setup(NebriOS):
 
     def check(self):
         if child is not None:
-            return child.continue_trello_setup == True
+            return child.oauth_token_setup == True or child.board_request_handled == True
         return self.trello_webhook_setup == True
 
     def action(self):
@@ -48,24 +48,39 @@ class trello_webhook_setup(NebriOS):
         auth_token = get_auth_token(PARENT=self)
         if auth_token.token is None:
             # no token yet, let's load the card.
-            load_card('trello-token-save')
-            return
-        else:
-            auth_token.continue_trello_setup = False
+            auth_token.trello_api_key = self.trello_api_key
+            auth_token.trello_api_secret = self.trello_api_secret
             auth_token.save()
+            load_card('trello-token-save', pid=auth_token.PROCESS_ID)
+            return
         client = get_client()
         user = get_user(client)
         local_user_data = get_user_data(user['id'])
+        if child is not None:
+            if child.kind == "trelloboardrequest":
+                if child.board_kind == "backup":
+                    local_user_data.backup_board_id = child.board_id
+                elif child.board_kind == "deleted":
+                    local_user_data.deleted_list_id = child.board_id
+                elif child.board_kind == "archive":
+                    local_user_data.archived_list_id = child.board_id
+                local_user_data.save()
+        local_data_failure = False
         if local_user_data.backup_board_id is None:
-            request = TrelloBoardRequest(PARENT=self, board_kind="backup")
-            request.save()
-            load_card('thatsaspicemeataball', pid=request.PROCESS_ID)
+            local_data_failure = True
+            request, created = get_board_request("backup", PARENT=self)
+            if created:
+                load_card('trello-board-request', pid=request.PROCESS_ID)
         if local_user_data.deleted_list_id is None:
-            request = TrelloBoardRequest(PARENT=self, board_kind="deleted")
-            request.save()
-            load_card('thatsaspicemeataball', pid=request.PROCESS_ID)
+            local_data_failure = True
+            request, created = get_board_request("deleted", PARENT=self)
+            if created:
+                load_card('trello-board-request', pid=request.PROCESS_ID)
         if local_user_data.archived_list_id is None:
-            request = TrelloBoardRequest(PARENT=self, board_kind="archive")
-            request.save()
-            load_card('thatsaspicemeataball', pid=request.PROCESS_ID)
+            local_data_failure = True
+            request, created = get_board_request("archive", PARENT=self)
+            if created:
+                load_card('trello-board-request', pid=request.PROCESS_ID)
+        if not local_data_failure:
+            self.completed_setup = True
 

@@ -1,0 +1,10 @@
+<polymer-element name="trello-board-request" extends="nebrios-form" target="trello_webhook.board_request">
+    <template>
+        <h2>Trello Board URL Request</h2>
+        Please provide the url to the desired <strong>{{kvps.board_kind.value}} tickets</strong> Trello board.
+        <nebrios-string id="board_url" label="Trello Board URL" required="true"></nebrios-string>
+    </template>
+    <script>
+        Polymer("trello-board-request", {});
+    </script>
+</polymer-element>

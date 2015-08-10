@@ -4,7 +4,8 @@ import traceback
 
 from trello import TrelloClient
 
-from trello_webhook_models import get_auth_token
+from trello_utils import get_client, get_user
+from trello_webhook_models import get_auth_token, get_user_data
 
 logging.basicConfig(filename='trello_webhook_module.log', level=logging.DEBUG)
 
@@ -19,8 +20,22 @@ def oauth_token(request):
     if request.FORM:
         auth_token = get_auth_token()
         auth_token.token = request.FORM.trello_token
-        auth_token.continue_trello_setup = True
+        auth_token.oauth_token_setup = True
+        auth_token.trello_api_key = None
+        auth_token.trello_api_secret = None
         auth_token.save()
+
+
+def board_request(request):
+    if request.FORM:
+        client = get_client()
+        boards = client.list_boards()
+        board = next((b for b in boards if b.url == request.FORM.board_url), None)
+        if board is not None:
+            request.PROCESS.board_id = board.id
+            request.PROCESS.board_url = request.FORM.board_url
+        request.PROCESS.board_request_handled = True
+        request.PROCESS.save()
 
 
 def board_callback(request):
@@ -45,6 +60,7 @@ def board_callback(request):
         logging.debug('Exception caught: %s', traceback.format_exc())
         raise err
 
+
 def member_callback(request):
     try:
         client = _get_client()
@@ -62,6 +78,7 @@ def member_callback(request):
     except Exception, err:
         logging.debug('Exception caught: %s', traceback.format_exc())
         raise err
+
 
 def _update_card(action, action_type, action_data, card_json):
     first_action = card_json['actions'][-1]
@@ -139,12 +156,15 @@ def _update_card(action, action_type, action_data, card_json):
     local_card.card_json = card_json
     local_card.save()
 
+
 def _get_list(board, list_id):
     board_list, _ = Process.objects.get_or_create(PARENT=board, kind="trello_list", list_id=list_id)
     return board_list
 
+
 def _get_board(board_id):
     return Process.objects.get(kind="trello_board", board_id=board_id)
+
 
 def _get_trello_token():
     try:
@@ -153,6 +173,7 @@ def _get_trello_token():
         load_card('trello-token-save')
         raise Exception('Token does not exist. Please supply one on the Trello OAuth Token Creation card or run trello_webhook_setup.')
     return ""
+
 
 def _get_client():
     token = _get_trello_token()
