@@ -1,5 +1,5 @@
 from trello_utils import get_client, get_user
-from trello_webhook_models import TrelloBoardRequest, get_auth_token, get_user_data, get_board_request
+from trello_webhook_models import get_auth_token, get_user_data, get_board_request, TrelloBoard
 
 
 class trello_webhook_setup(NebriOS):
@@ -82,5 +82,10 @@ class trello_webhook_setup(NebriOS):
             if created:
                 load_card('trello-board-request', pid=request.PROCESS_ID)
         if not local_data_failure:
+            self.setup_boards(client)
             self.completed_setup = True
+
+    def setup_boards(self, client):
+        for board in client.list_boards():
+            TrelloBoard.from_trello_board(board)
 

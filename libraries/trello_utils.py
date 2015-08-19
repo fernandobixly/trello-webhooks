@@ -18,3 +18,8 @@ def get_client():
 
 def get_user(client):
     return client.fetch_json('/members/me')
+
+
+def get_hook_url(self, base_url):
+    auth_token = get_auth_token()
+    return '%s?trello_api_key=%s&trello_token=%s' % (base_url, shared.TRELLO_API_KEY, auth_token.token)
